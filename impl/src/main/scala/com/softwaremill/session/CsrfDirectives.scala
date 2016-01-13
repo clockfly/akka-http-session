@@ -1,5 +1,6 @@
 package com.softwaremill.session
 
+import akka.http.scaladsl.server.directives.FormFieldDirectives.FieldMagnet
 import akka.http.scaladsl.server.{Directive1, Directive0}
 import akka.http.scaladsl.server.Directives._
 import akka.stream.Materializer
@@ -31,7 +32,7 @@ trait CsrfDirectives {
         }
       case None =>
         // if a cookie is not set, generating a new one for get requests, rejecting other
-        (get & setNewCsrfToken()).recover(_ => reject(magnet.manager.tokenInvalidRejection))
+        (get & setNewCsrfToken(CsrfManagerMagnet.forCsrfManager())).recover(_ => reject(magnet.manager.tokenInvalidRejection))
     }
   }
 
@@ -40,7 +41,8 @@ trait CsrfDirectives {
       magnet.input match {
         case c: CheckHeaderAndForm =>
           import c.materializer
-          formField(magnet.manager.config.csrfSubmittedName)
+          val field = magnet.manager.config.csrfSubmittedName
+          formField(field)
         case _ => reject(rejections: _*)
       }
     }

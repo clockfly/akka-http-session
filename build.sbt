@@ -3,7 +3,7 @@ import scalariform.formatter.preferences._
 lazy val commonSettings = scalariformSettings ++ Seq(
   organization := "com.softwaremill",
   version := "0.1.4",
-  scalaVersion := "2.11.6",
+  scalaVersion := "2.10.5",
   scalacOptions ++= Seq("-unchecked", "-deprecation"),
   ScalariformKeys.preferences := ScalariformKeys.preferences.value
     .setPreference(DoubleIndentClassDeclaration, true)
@@ -43,7 +43,7 @@ lazy val rootProject = (project in file("."))
   .settings(
     publishArtifact := false,
     name := "akka-http-session-root")
-  .aggregate(impl, example)
+  .aggregate(impl)
 
 lazy val impl: Project = (project in file("impl"))
   .settings(commonSettings: _*)
@@ -56,13 +56,3 @@ lazy val impl: Project = (project in file("impl"))
       "org.scalatest" %% "scalatest" % "2.2.4" % "test"
     )
   )
-
-lazy val example: Project = (project in file("example"))
-  .settings(commonSettings: _*)
-  .settings(
-    publishArtifact := false,
-    libraryDependencies ++= Seq(
-      "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
-      "ch.qos.logback" % "logback-classic" % "1.1.3"
-    ))
-  .dependsOn(impl)

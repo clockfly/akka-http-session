@@ -18,7 +18,7 @@ trait RememberMeDirectives {
    */
   def setPersistentSession[T](magnet: RememberMeStorageMagnet[T, T]): Directive0 = {
     import magnet._
-    setSession(magnet.input) & setRememberMeCookie(magnet)
+    setSession(ClientSessionManagerMagnet.forClientManager(magnet.input)) & setRememberMeCookie(magnet)
   }
 
   /**
@@ -28,14 +28,19 @@ trait RememberMeDirectives {
    */
   def persistentSession[T](magnet: RememberMeStorageMagnet[T, Unit]): Directive1[SessionResult[T]] = {
     import magnet._
-    session().flatMap {
+    session(ClientSessionManagerMagnet.forClientManager()).flatMap {
       case SessionResult.NoSession =>
         optionalCookie(magnet.rememberMeManager.config.rememberMeCookieConfig.name).flatMap {
           case None => provide(SessionResult.NoSession)
           case Some(cookie) =>
             onSuccess(magnet.rememberMeManager.sessionFromCookie(cookie.value))
               .flatMap {
-                case s @ SessionResult.CreatedFromToken(session) => setPersistentSession(session) & provide(s: SessionResult[T])
+                case s @ SessionResult.CreatedFromToken(session) =>
+                  setPersistentSession(
+                    RememberMeStorageMagnet.forSeparateManagers(session)
+
+                  ) &
+                    provide(s: SessionResult[T])
                 case s => provide(s)
               }
         }
@@ -66,7 +71,7 @@ trait RememberMeDirectives {
    */
   def invalidatePersistentSession[T](magnet: RememberMeStorageMagnet[T, Unit]): Directive0 = {
     import magnet._
-    invalidateSession() & deleteCookie(magnet.rememberMeManager.createCookie("").copy(maxAge = None)) & {
+    invalidateSession(ClientSessionManagerMagnet.forClientManager()) & deleteCookie(magnet.rememberMeManager.createCookie("").copy(maxAge = None)) & {
       optionalCookie(magnet.rememberMeManager.config.rememberMeCookieConfig.name).flatMap {
         case None => pass
         case Some(cookie) => onSuccess(magnet.rememberMeManager.removeToken(cookie.value))
@@ -80,7 +85,11 @@ trait RememberMeDirectives {
    */
   def touchOptionalPersistentSession[T](magnet: RememberMeStorageMagnet[T, Unit]): Directive1[Option[T]] = {
     import magnet._
-    optionalPersistentSession(magnet).flatMap { d => d.fold(pass)(setSession(_)) & provide(d) }
+    optionalPersistentSession(magnet).flatMap { d =>
+      d.fold(pass) { se =>
+        setSession(ClientSessionManagerMagnet.forClientManager(se))
+      } & provide(d)
+    }
   }
 
   /**
@@ -89,7 +98,7 @@ trait RememberMeDirectives {
    */
   def touchRequiredPersistentSession[T](magnet: RememberMeStorageMagnet[T, Unit]): Directive1[T] = {
     import magnet._
-    requiredPersistentSession(magnet).flatMap { d => setSession(d) & provide(d) }
+    requiredPersistentSession(magnet).flatMap { d => setSession(ClientSessionManagerMagnet.forClientManager(d)) & provide(d) }
   }
 
   def setRememberMeCookie[T](magnet: RememberMeStorageMagnet[T, T]): Directive0 = {

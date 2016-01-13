@@ -48,8 +48,12 @@ trait ClientSessionDirectives {
    * option, as it sets the expiry date anew.
    */
   def touchOptionalSession[T](magnet: ClientSessionManagerMagnet[T, Unit]): Directive1[Option[T]] = {
-    import magnet.manager
-    optionalSession(magnet).flatMap { d => d.fold(pass)(setSession(_)) & provide(d) }
+    optionalSession(magnet).flatMap { d =>
+      d.fold(pass){ value =>
+        implicit val ma: ClientSessionManager[T] = magnet.manager
+        setSession(ClientSessionManagerMagnet.forClientManager(value))
+      } & provide(d)
+    }
   }
 
   /**
@@ -58,7 +62,7 @@ trait ClientSessionDirectives {
    */
   def touchRequiredSession[T](magnet: ClientSessionManagerMagnet[T, Unit]): Directive1[T] = {
     import magnet.manager
-    requiredSession(magnet).flatMap { d => setSession(d) & provide(d) }
+    requiredSession(magnet).flatMap { d => setSession(ClientSessionManagerMagnet.forClientManager(d)) & provide(d) }
   }
 }
 
